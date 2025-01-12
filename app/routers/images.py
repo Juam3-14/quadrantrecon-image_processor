@@ -1,6 +1,6 @@
 from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from app.services.image_utils import detect_frame, process_image
+from app.services.image_utils import process_image
 from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/images", tags=["Images"])
@@ -28,8 +28,4 @@ async def upload_image(file: UploadFile = File(...)):
         processed_image_path = process_image(file_path)
         return JSONResponse(content={"processed_image": str(processed_image_path)}, status_code=200)
     except Exception as e:
-        try:
-            processed_image_path = detect_frame(file_path)
-            return JSONResponse(content={"processed_image": str(processed_image_path)}, status_code=200)
-        except:
-            raise HTTPException(status_code=500, detail=f"Error procesando la imagen: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error procesando la imagen: {str(e)}")
