@@ -20,7 +20,7 @@ def process_image(input_path):
     l_channel, a_channel, b_channel = cv2.split(lab)
 
     # Establecer un umbral para la luminosidad (L), para detectar las zonas más claras
-    _, light_mask = cv2.threshold(l_channel, 180, 255, cv2.THRESH_BINARY)  # Ajusta 180 para mayor o menor claridad
+    _, light_mask = cv2.threshold(l_channel, 250, 255, cv2.THRESH_BINARY)  # Ajusta 180 para mayor o menor claridad
 
     # Aplicar la máscara para obtener solo las áreas más claras
     light_part = cv2.bitwise_and(image, image, mask=light_mask)
@@ -29,21 +29,22 @@ def process_image(input_path):
     light_filtered_debug_path = os.path.join(output_dir, "light_filtered_image.png")
     cv2.imwrite(light_filtered_debug_path, light_part)
 
+    # Aplicar un filtro para reducir el ruido
+    blurred_image = cv2.GaussianBlur(light_part, (15, 15), 0)  # Usando Gaussian Blur
+
+    # Guardar la imagen después de aplicar el blur
+    blurred_image_debug_path = os.path.join(output_dir, "blurred_image.png")
+    cv2.imwrite(blurred_image_debug_path, blurred_image)
+
     # Convertir a escala de grises para detectar bordes
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(blurred_image, cv2.COLOR_BGR2GRAY)
 
-    # Aplicar filtro de Sobel para detectar gradientes
-    grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-    grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+    # Umbral para detectar bordes después del suavizado
+    _, edges = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)
 
-    # Magnitud del gradiente
-    magnitude = cv2.magnitude(grad_x, grad_y)
-
-    # Normalizar la magnitud del gradiente para mejorar la visualización
-    magnitude = cv2.convertScaleAbs(magnitude)
-    
-    # Umbral para detectar bordes
-    _, edges = cv2.threshold(magnitude, 50, 255, cv2.THRESH_BINARY)
+    # Guardar la imagen después de la detección de bordes
+    edges_debug_path = os.path.join(output_dir, "edges_image.png")
+    cv2.imwrite(edges_debug_path, edges)
 
     # Encontrar las líneas en la imagen con la Transformada de Hough
     lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=50, maxLineGap=10)
@@ -92,7 +93,7 @@ def process_image(input_path):
     min_y, max_y = min(all_y), max(all_y)
 
     # Desplazar el rectángulo hacia el interior para enfocarse en la parte dentro del cuadrado
-    offset = 10  # Ajusta este valor para mover más o menos hacia el interior
+    offset = 60  # Ajusta este valor para mover más o menos hacia el interior
     min_x, max_x = min_x + offset, max_x - offset
     min_y, max_y = min_y + offset, max_y - offset
 
@@ -102,5 +103,18 @@ def process_image(input_path):
     # Guardar la imagen recortada
     cropped_image_path = os.path.join(output_dir, "cropped_image.png")
     cv2.imwrite(cropped_image_path, cropped_image)
+
+    # Focus on the center by adjusting the cropping area
+    center_x, center_y = cropped_image.shape[1] // 2, cropped_image.shape[0] // 2
+    crop_size = 850# Define the size of the center focus area
+
+    # Recortar alrededor del centro (esto debería enfocarse en el cuadrado)
+    min_x, max_x = center_x - crop_size, center_x + crop_size
+    min_y, max_y = center_y - crop_size, center_y + crop_size
+    center_cropped_image = cropped_image[min_y:max_y, min_x:max_x]
+
+    # Guardar la imagen centrada
+    center_cropped_image_path = os.path.join(output_dir, "center_cropped_image.png")
+    cv2.imwrite(center_cropped_image_path, center_cropped_image)
 
     return "Proceso completo. Las imágenes de depuración están disponibles en la carpeta de salida."
